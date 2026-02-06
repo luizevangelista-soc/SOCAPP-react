@@ -1,29 +1,80 @@
+import { Programa } from '@/src/services/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const MENU_ITEMS = [
-  { label: 'SOCGED', icon: '📁' },
-  { label: 'Checklist e Inspeções', icon: '📋' },
-  { label: 'Gestão Off-line', icon: '⬇️' },
-  { label: 'Central de assinaturas', icon: '✍️' },
-  { label: 'Requisições de entrega de EPI', icon: '🩹' },
-  { label: 'Epis em Atraso', icon: '⏱️' },
-  { label: 'Idiomas', icon: '🌐' },
-  { label: 'Sobre', icon: 'ℹ️' },
-  { label: 'Iniciar Processo', icon: '▶️' },
-  { label: 'Buscar Processos', icon: '🔍' },
-  { label: 'Pendências de Processos', icon: '📝' },
-  { label: 'Sair', icon: '↩️' }, // ← botão de logout
-];
+interface MenuItem {
+  label: string;
+  icon: string;
+  programa?: Programa;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+
+  useEffect(() => {
+    loadPrograms();
+  }, []);
+
+  async function loadPrograms() {
+    try {
+      const programsData = await AsyncStorage.getItem('userPrograms');
+      
+      if (programsData) {
+        const programs: Programa[] = JSON.parse(programsData);
+        
+        // Filtrar programas: apenas os que estão liberados E aparecem no menu
+        const filteredPrograms = programs.filter(
+          (programa) => programa.liberado && programa.apareceNoMenu
+        );
+
+        // Mapear para MenuItem
+        const items: MenuItem[] = filteredPrograms.map((programa) => ({
+          label: programa.nomeTela,
+          icon: getIconEmoji(programa.nomeIcone),
+          programa,
+        }));
+
+        // Adicionar botão de sair
+        items.push({ label: 'Sair', icon: '↩️' });
+
+        setMenuItems(items);
+      } else {
+        // Se não houver programas, mostrar apenas o botão de sair
+        setMenuItems([{ label: 'Sair', icon: '↩️' }]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar programas:', error);
+      setMenuItems([{ label: 'Sair', icon: '↩️' }]);
+    }
+  }
+
+  // Função para mapear nomes de ícones para emojis
+  function getIconEmoji(iconName: string): string {
+    const iconMap: Record<string, string> = {
+      rectangle_stack: '📁',
+      checklist: '📋',
+      download: '⬇️',
+      signature: '✍️',
+      medical: '🩹',
+      clock: '⏱️',
+      globe: '🌐',
+      info: 'ℹ️',
+      play: '▶️',
+      search: '🔍',
+      document: '📝',
+    };
+    return iconMap[iconName] || '📄';
+  }
 
   // Função para lidar com cliques do menu
   function handleMenuPress(label: string) {
     if (label === 'Sair') {
+      // Limpar dados do AsyncStorage
+      AsyncStorage.multiRemove(['userPrograms', 'userData']);
       // Redireciona para login
       router.replace('/'); // index.tsx → login
       return;
@@ -42,7 +93,7 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.grid}>
-        {MENU_ITEMS.map((item, index) => (
+        {menuItems.map((item, index) => (
           <TouchableOpacity
             key={index}
             style={styles.card}
