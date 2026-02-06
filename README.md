@@ -13,3 +13,17 @@ npm install
 ```
 npx expo start -c --android
 ```
+
+
+### Redis Local (server)
+```
+podman machine start 
+
+podman pull docker.io/redis
+
+podman run --name redis-server -d -p 6379:6379 redis
+
+podman exec -it redis-server redis-cli
+
+KEYS *
+```
