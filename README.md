@@ -14,6 +14,14 @@ npm install
 npx expo start -c --android
 ```
 
+## Logs debug
+```
+No dispositivo/emulador, agite o dispositivo (ou pressione Ctrl+M no Android / Cmd+D no iOS) e selecione:
+
+Opção:
+Open JS Debugger
+```
+
 
 ### Redis Local (server)
 ```

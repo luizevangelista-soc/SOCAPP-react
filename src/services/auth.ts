@@ -36,6 +36,12 @@ interface LoginResponse {
   data?: any;
 }
 
+export interface SyncResponse {
+  success: boolean;
+  tokenExpired?: boolean;
+  message?: string;
+}
+
 export async function authenticateUser(credentials: LoginCredentials): Promise<LoginResponse> {
   try {
     const response = await fetch(`${API_BASE_URL}/SocApp/api/login/autenticar`, {
@@ -50,9 +56,13 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<L
     const data = await response.json();
 
     if (response.ok) {
-      // Salvar dados do usuário incluindo programas
+      // Salvar dados do usuário incluindo programas e token JWT
       if (data.programas) {
         await AsyncStorage.setItem('userPrograms', JSON.stringify(data.programas));
+      }
+      if (data.token || data.jwt || data.accessToken) {
+        const token = data.token || data.jwt || data.accessToken;
+        await AsyncStorage.setItem('authToken', token);
       }
       await AsyncStorage.setItem('userData', JSON.stringify(data));
       
@@ -72,5 +82,45 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<L
       success: false,
       message: 'Não foi possível conectar ao servidor',
     };
+  }
+}
+
+// Função para sincronizar programas com o servidor
+export async function syncProgramsToServer(): Promise<SyncResponse> {
+  try {
+    const token = await AsyncStorage.getItem('authToken');
+    const programsData = await AsyncStorage.getItem('userPrograms');
+
+    if (!token || !programsData) {
+      console.log('Token ou programas não encontrados');
+      return { success: false, message: 'Token ou programas não encontrados' };
+    }
+
+    const programs = JSON.parse(programsData);
+
+    const response = await fetch(`${API_BASE_URL}/SocApp/api/programas`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'X-Token-Api': 'daccca8a-ae91-4a85-8f35-edafde17f368',
+      },
+      body: JSON.stringify({ programas: programs }),
+    });
+
+    if (response.ok) {
+      console.log('Programas sincronizados com sucesso');
+      return { success: true };
+    } else if (response.status === 401 || response.status === 403) {
+      // Token expirado ou inválido
+      console.warn('Token expirado ou inválido');
+      return { success: false, tokenExpired: true, message: 'Sessão expirada' };
+    } else {
+      console.error('Erro ao sincronizar programas:', response.status);
+      return { success: false, message: `Erro: ${response.status}` };
+    }
+  } catch (error) {
+    console.error('Erro ao sincronizar programas:', error);
+    return { success: false, message: 'Erro ao conectar com servidor' };
   }
 }
