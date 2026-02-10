@@ -1,4 +1,5 @@
 import { authenticateUser } from '@/src/services/auth';
+import { initDatabase } from '@/src/services/database';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import * as Network from 'expo-network';
 import { useRouter } from 'expo-router';
@@ -15,7 +16,11 @@ export default function LoginScreen() {
   const [deviceIp, setDeviceIp] = useState('0.0.0.0');
 
    useEffect(() => {
-     async function getIp() {
+     async function initialize() {
+       // Inicializar o banco de dados
+       await initDatabase();
+       
+       // Obter IP do dispositivo
        try {
          const ip = await Network.getIpAddressAsync();
          setDeviceIp(ip);
@@ -23,7 +28,7 @@ export default function LoginScreen() {
          console.error('Erro ao obter IP:', error);
        }
      }
-     getIp();
+     initialize();
    }, []);
 
   async function handleLogin() {

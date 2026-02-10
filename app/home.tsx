@@ -1,6 +1,6 @@
 import { Programa } from '@/src/services/auth';
+import { clearAllData, getMenuPrograms, removeAuthToken } from '@/src/services/database';
 import { checkConnectionAndSync } from '@/src/services/sync';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -41,9 +41,9 @@ export default function HomeScreen() {
         [
           {
             text: 'OK',
-            onPress: () => {
+            onPress: async () => {
               // Limpar apenas o token, manter os dados do usuário
-              AsyncStorage.removeItem('authToken');
+              await removeAuthToken();
               router.replace('/');
             },
           },
@@ -54,18 +54,12 @@ export default function HomeScreen() {
 
   async function loadPrograms() {
     try {
-      const programsData = await AsyncStorage.getItem('userPrograms');
+      // Buscar programas do SQLite (já filtrados: liberados e aparecem no menu)
+      const programs = await getMenuPrograms();
       
-      if (programsData) {
-        const programs: Programa[] = JSON.parse(programsData);
-        
-        // Filtrar programas: apenas os que estão liberados E aparecem no menu
-        const filteredPrograms = programs.filter(
-          (programa) => programa.liberado && programa.apareceNoMenu
-        );
-
+      if (programs.length > 0) {
         // Mapear para MenuItem
-        const items: MenuItem[] = filteredPrograms.map((programa) => ({
+        const items: MenuItem[] = programs.map((programa) => ({
           label: programa.nomeTela,
           icon: getIconEmoji(programa.nomeIcone),
           programa,
@@ -80,7 +74,7 @@ export default function HomeScreen() {
         setMenuItems([{ label: 'Sair', icon: '↩️' }]);
       }
     } catch (error) {
-      console.error('Erro ao verificar conexão:', error);
+      console.error('Erro ao carregar programas:', error);
     }
   }
 
@@ -103,10 +97,10 @@ export default function HomeScreen() {
   }
 
   // Função para lidar com cliques do menu
-  function handleMenuPress(label: string) {
+  async function handleMenuPress(label: string) {
     if (label === 'Sair') {
-      // Limpar dados do AsyncStorage
-      AsyncStorage.multiRemove(['userPrograms', 'userData']);
+      // Limpar todos os dados do SQLite
+      await clearAllData();
       // Redireciona para login
       router.replace('/'); // index.tsx → login
       return;

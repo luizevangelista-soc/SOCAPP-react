@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { getAuthToken, getPrograms, saveAuthToken, savePrograms, saveUserData } from './database';
 
 // Configure o IP da sua máquina aqui
 // Para Android Emulator: use 10.0.2.2
@@ -56,15 +56,15 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<L
     const data = await response.json();
 
     if (response.ok) {
-      // Salvar dados do usuário incluindo programas e token JWT
+      // Salvar dados do usuário incluindo programas e token JWT no SQLite
       if (data.programas) {
-        await AsyncStorage.setItem('userPrograms', JSON.stringify(data.programas));
+        await savePrograms(data.programas);
       }
       if (data.token || data.jwt || data.accessToken) {
         const token = data.token || data.jwt || data.accessToken;
-        await AsyncStorage.setItem('authToken', token);
+        await saveAuthToken(token);
       }
-      await AsyncStorage.setItem('userData', JSON.stringify(data));
+      await saveUserData(data);
       
       return {
         success: true,
@@ -88,15 +88,13 @@ export async function authenticateUser(credentials: LoginCredentials): Promise<L
 // Função para sincronizar programas com o servidor
 export async function syncProgramsToServer(): Promise<SyncResponse> {
   try {
-    const token = await AsyncStorage.getItem('authToken');
-    const programsData = await AsyncStorage.getItem('userPrograms');
+    const token = await getAuthToken();
+    const programs = await getPrograms();
 
-    if (!token || !programsData) {
+    if (!token || programs.length === 0) {
       console.log('Token ou programas não encontrados');
       return { success: false, message: 'Token ou programas não encontrados' };
     }
-
-    const programs = JSON.parse(programsData);
 
     const response = await fetch(`${API_BASE_URL}/SocApp/api/programas`, {
       method: 'POST',
