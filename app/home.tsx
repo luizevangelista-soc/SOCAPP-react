@@ -106,8 +106,8 @@ export default function HomeScreen() {
       return;
     }
 
-    // Aqui você pode tratar outros menus
-    console.log(`Clicou em ${label}`);
+    // Para qualquer outro ícone, navegar para a tela de programas
+    router.push('/programs');
   }
 
   return (
